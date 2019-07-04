@@ -60,7 +60,7 @@ func ReadJsonFile() {
 	json.Unmarshal(dat, &repository.CallerInfo)
 	fmt.Println("Assinged last request Id")
 	requestId = repository.CallerInfo.LastRequestId
-	fmt.Print(string(dat), repository.CallerInfo)
+	fmt.Print("Last call info", string(dat))
 }
 
 func GenerateReqId() int {
