@@ -18,51 +18,47 @@ const (
 
 type ItemRequest model.ItemRequest
 
-var CallerInfo model.CallerInfo
+var Callerinfo CallerInfoType
 
-func (item *ItemRequest) Item(requestId int, wg *sync.WaitGroup) {
+func (item *ItemRequest) Item(requestID int, wg *sync.WaitGroup) {
 	defer wg.Done()
-	response, err := http.Get(ITEM_URL + strconv.Itoa(requestId))
+	response, err := http.Get(ITEM_URL + strconv.Itoa(requestID))
 	if response != nil {
 		defer response.Body.Close()
 	}
-	UpdateLastRequestId(requestId)
+	UpdateLastRequestID(requestID)
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
-		CallerInfo.FailureIds = append(CallerInfo.FailureIds, requestId)
-		CallerInfo.FailureCount += 1
-		if CallerInfo.FailureCount > 10 {
-			CallerInfo.ErrorCount += 1
-			CallerInfo.FailureCount = 0
-			fmt.Println("Worker pause for ", SLEEP_IN_SECOND, " second")
-			time.Sleep(SLEEP_IN_SECOND * time.Second)
-		}
+		FailureLog(requestID)
 		return
 	}
 	data, _ := ioutil.ReadAll(response.Body)
 	var jsonData model.ItemResponse
 	json.Unmarshal(data, &jsonData)
 	if jsonData.Id == "" {
-		fmt.Println("Data not present", requestId)
-		CallerInfo.FailureIds = append(CallerInfo.FailureIds, requestId)
-		CallerInfo.FailureCount += 1
-		if CallerInfo.FailureCount > 10 {
-			CallerInfo.ErrorCount += 1
-			CallerInfo.FailureCount = 0
-			fmt.Println("Worker pause for ", SLEEP_IN_SECOND, " second")
-			time.Sleep(SLEEP_IN_SECOND * time.Second)
-		}
+		fmt.Println("Data not present", requestID)
+		FailureLog(requestID)
 		return
 	}
-
-	CallerInfo.FailureCount = 0
+	Callerinfo.FailureCount = 0
 	fmt.Println(jsonData.Id, jsonData.Title)
 
 }
 
-func UpdateLastRequestId(requestId int) {
-	if CallerInfo.LastRequestId < requestId {
-		CallerInfo.LastRequestId = requestId
+func UpdateLastRequestID(requestID int) {
+	if Callerinfo.LastRequestId < requestID {
+		Callerinfo.LastRequestId = requestID
 	}
 	return
+}
+
+func FailureLog(requestID int) {
+	Callerinfo.FailureIds = append(Callerinfo.FailureIds, requestID)
+	Callerinfo.FailureCount++
+	if Callerinfo.FailureCount >= 10 {
+		Callerinfo.ErrorCount++
+		Callerinfo.FailureCount = 0
+		fmt.Println("Worker pause for ", SLEEP_IN_SECOND, " second")
+		time.Sleep(SLEEP_IN_SECOND * time.Second)
+	}
 }
