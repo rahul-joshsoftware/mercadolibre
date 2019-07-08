@@ -26,7 +26,7 @@ func main() {
 	signal.Notify(gracefulStop, syscall.SIGTERM)
 	signal.Notify(gracefulStop, syscall.SIGINT)
 	for {
-		fmt.Println(WORKER, " Worker is start")
+		fmt.Println(WORKER, "worker is start")
 		Worker()
 	}
 }
@@ -44,18 +44,18 @@ func Worker() {
 		os.Exit(0)
 	}()
 	for i := 0; i < WORKER; i++ {
-		requestID = GenerateReqID()
+		requestID = generateReqID()
 		go itemData.Item(requestID, &wg)
 	}
 	wg.Wait()
 }
-func GenerateReqID() int {
+func generateReqID() int {
 	if requestID == 0 {
 		return STARTINGPRODUCT
 	}
 	increamentReqID := requestID + 1
 	if repository.Callerinfo.ErrorCount >= 3 {
-		fmt.Println("Error count greater than 3 hence Id increase by 50")
+		fmt.Println("error count greater than 3 hence Id increase by 50")
 		increamentReqID = requestID + 50
 		repository.Callerinfo.ErrorCount = 0
 	}
