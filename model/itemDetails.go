@@ -13,3 +13,8 @@ type CallerInfo struct {
 	ErrorCount    int   `json:"errorcount"`
 	FailureIds    []int `json:"failureids"`
 }
+type ResponseChan struct {
+	RequestID int
+	ItemData  ItemResponse
+	Error     string
+}

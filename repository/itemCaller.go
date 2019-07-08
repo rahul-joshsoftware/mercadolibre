@@ -8,64 +8,57 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
-)
-
-const (
-	SLEEP_IN_SECOND = 10
-	ITEM_URL        = "https://api.mercadolibre.com/items/MLA"
 )
 
 type ItemRequest model.ItemRequest
 
-var Callerinfo CallerInfoType
+func NewItemRepository() *ItemRequest {
+	return &ItemRequest{}
+}
 
-func (item *ItemRequest) Item(requestID int, wg *sync.WaitGroup) {
+type ItemInterface interface {
+	Item(reqIDChan chan int, respItemChan chan model.ResponseChan, wg *sync.WaitGroup)
+}
+
+// call the itemdetails api
+func (item *ItemRequest) Item(reqIDChan chan int, respItemChan chan model.ResponseChan, wg *sync.WaitGroup) {
 	defer wg.Done()
-	response, err := http.Get(ITEM_URL + strconv.Itoa(requestID))
+	var respItemdata model.ResponseChan
+	reqID := <-reqIDChan
+
+	response, err := http.Get("https://api.mercadolibre.com/items/MLA" + strconv.Itoa(reqID))
 	if err != nil {
-		failureLog("The HTTP request failed with error"+err.Error(), requestID)
+		respItemdata.RequestID = reqID
+		respItemdata.Error = fmt.Sprintf("The HTTP request failed with error %v RequestID %v", err.Error(), reqID)
+		respItemChan <- respItemdata
 		return
 	}
 	if response != nil {
 		defer response.Body.Close()
 	}
-	updateLastRequestID(requestID)
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		failureLog("response can't not read"+err.Error(), requestID)
+		respItemdata.RequestID = reqID
+		respItemdata.Error = fmt.Sprintf("response can't not read %v RequestID %v", err.Error(), reqID)
+		respItemChan <- respItemdata
 		return
 	}
 	var jsonData model.ItemResponse
 	err = json.Unmarshal(data, &jsonData)
 	if err != nil {
-		failureLog("json can't not unmarshal"+err.Error(), requestID)
+		respItemdata.RequestID = reqID
+		respItemdata.Error = fmt.Sprintf("json can't not unmarshal %v RequestID %v", err.Error(), reqID)
+		respItemChan <- respItemdata
 		return
 	}
 	if jsonData.Id == "" {
-		failureLog("data not present", requestID)
+		respItemdata.RequestID = reqID
+		respItemdata.Error = fmt.Sprintf("data not present RequestID %v", reqID)
+		respItemChan <- respItemdata
 		return
 	}
-	Callerinfo.FailureCount = 0
-	fmt.Println(jsonData.Id, jsonData.Title)
+	respItemdata.RequestID = reqID
+	respItemdata.ItemData = jsonData
+	respItemChan <- respItemdata
 
-}
-
-func updateLastRequestID(requestID int) {
-	if Callerinfo.LastRequestId < requestID {
-		Callerinfo.LastRequestId = requestID
-	}
-	return
-}
-
-func failureLog(errmessage string, requestID int) {
-	fmt.Println(errmessage, requestID)
-	Callerinfo.FailureIds = append(Callerinfo.FailureIds, requestID)
-	Callerinfo.FailureCount++
-	if Callerinfo.FailureCount >= 10 {
-		Callerinfo.ErrorCount++
-		Callerinfo.FailureCount = 0
-		fmt.Println("Worker pause for ", SLEEP_IN_SECOND, " second")
-		time.Sleep(SLEEP_IN_SECOND * time.Second)
-	}
 }
